@@ -87,7 +87,6 @@ const check = async (request, response, next) => {
 };
 app.post("/login/", check, async (request, response) => {
   try {
-    const { username, password } = request.body;
     const token = jwt.sign(request.user, "Secret Key");
     response.send({
       jwtToken: token,
@@ -125,12 +124,12 @@ const auth = async (request, response, next) => {
 };
 app.get("/user/tweets/feed/", auth, async (request, response) => {
   try {
-    const username = request.user;
+    const user = request.user;
     const getTweetsSql = `SELECT  username,tweet,date_time as dateTime
         FROM follower 
             LEFT JOIN tweet on tweet.user_id= follower.following_user_id
             LEFT JOIN user ON user.user_id=tweet.user_id
-        WHERE  follower.follower_user_id = ${username.user_id}
+        WHERE  follower.follower_user_id = ${user.user_id}
         ORDER BY tweet.date_time desc
         limit 4`;
     const tweets = await db.all(getTweetsSql);
@@ -143,7 +142,6 @@ app.get("/user/tweets/feed/", auth, async (request, response) => {
 //API 4:
 app.get("/user/following/", auth, async (request, response) => {
   try {
-    const user = request.user;
     const getFollowingSql = `
         SELECT user.name as name
         FROM follower LEFT join 
@@ -159,7 +157,6 @@ app.get("/user/following/", auth, async (request, response) => {
 //API 5:
 app.get("/user/followers/", auth, async (request, response) => {
   try {
-    const user = request.user;
     const getFollowingSql = `
         SELECT user.name as name
         FROM follower LEFT join 
@@ -175,7 +172,6 @@ app.get("/user/followers/", auth, async (request, response) => {
 //API 6:
 const checkFollowing = async (request, response, next) => {
   try {
-    const user = request.user;
     const { tweetId } = request.params;
     const getTweets = await db.get(`SELECT COUNT(*) as count 
         FROM follower 
@@ -199,7 +195,6 @@ app.get(
   checkFollowing,
   async (request, response) => {
     try {
-      const user = request.user;
       let tweet;
       const { tweetId } = request.params;
       const checkTweetSql = `
@@ -256,7 +251,6 @@ app.get(
   checkFollowing,
   async (request, response) => {
     try {
-      const user = request.user;
       let tweet;
       const { tweetId } = request.params;
       const checkTweetSql = `
