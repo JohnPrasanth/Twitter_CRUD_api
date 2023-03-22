@@ -207,10 +207,12 @@ app.get(
             count(like.like_id) as likes,
             count(reply.reply_id) as replies,
             tweet.date_time as dateTime
-        FROM  tweet 
-            LEFT JOIN like ON like.tweet_id= tweet.tweet_id
-            LEFT JOIN reply ON tweet.tweet_id= reply.tweet_id
-        WHERE tweet.tweet_id = ${tweetId}`;
+        FROM  FROM follower 
+            INNER JOIN tweet ON follower.following_user_id = tweet.user_id         
+            INNER JOIN like ON like.tweet_id= tweet.tweet_id
+            INNER JOIN reply ON tweet.tweet_id= reply.tweet_id
+        WHERE follower.follower_user_id = ${user.user_id} AND 
+        tweet.tweet_id = ${tweetId}`;
       tweet = await db.get(checkTweetSql);
       response.send(tweet);
     } catch (e) {
@@ -231,7 +233,8 @@ app.get(
       const { tweetId } = request.params;
       const checkTweetSql = `
           SELECT distinct(user.username) as username
-          FROM  tweet 
+          FROM  FROM follower 
+            INNER JOIN tweet ON follower.following_user_id = tweet.user_id 
           inner JOIN like ON like.tweet_id= tweet.tweet_id
           inner JOIN user ON user.user_id= like.user_id;
           WHERE tweet.tweet_id = ${tweetId}`;
@@ -265,7 +268,7 @@ app.get(
     JOIN tweet t ON r.tweet_id = t.tweet_id 
     JOIN follower f ON t.user_id = f.following_user_id 
     JOIN user u ON r.user_id = u.user_id 
-    WHERE f.follower_user_id = ${tweetId}`;
+    WHERE f.follower_user_id = ${tweetId} AND t.tweet_id=${tweetId}`;
       tweet = await db.all(checkTweetSql);
       response.send({
         replies: tweet,
@@ -283,8 +286,8 @@ app.get("/user/tweets/", authorization, async (request, response) => {
     const getTweetSql = `
         SELECT t.tweet as tweet, COUNT(l.like_id) as num_likes, COUNT(r.reply_id) as num_replies, t.date_time
     FROM tweet t
-    LEFT JOIN like l ON t.tweet_id = l.tweet_id
-    LEFT JOIN reply r ON t.tweet_id = r.tweet_id
+    inner JOIN like l ON t.tweet_id = l.tweet_id
+    inner JOIN reply r ON t.tweet_id = r.tweet_id
     WHERE t.user_id = ${user.user_id}
     GROUP BY t.tweet_id;
         `;
