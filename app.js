@@ -59,7 +59,7 @@ app.post("/register/", async (request, response) => {
 });
 
 //API 2:
-const check = async (request, response, next) => {
+const checkPassword = async (request, response, next) => {
   try {
     const { username, password } = request.body;
     let user;
@@ -85,7 +85,7 @@ const check = async (request, response, next) => {
     console.log(e.message);
   }
 };
-app.post("/login/", check, async (request, response) => {
+app.post("/login/", checkPassword, async (request, response) => {
   try {
     const { username, password } = request.body;
     const token = jwt.sign(request.user, "Secret Key");
@@ -98,7 +98,7 @@ app.post("/login/", check, async (request, response) => {
 });
 
 //API 3: Get tweets
-const auth = async (request, response, next) => {
+const authorization = async (request, response, next) => {
   try {
     let token;
     const authHead = request.headers["authorization"];
@@ -123,7 +123,7 @@ const auth = async (request, response, next) => {
     console.log(e.message);
   }
 };
-app.get("/user/tweets/feed/", auth, async (request, response) => {
+app.get("/user/tweets/feed/", authorization, async (request, response) => {
   try {
     const username = request.user;
     const getTweetsSql = `SELECT  username,tweet,date_time as dateTime
@@ -141,7 +141,7 @@ app.get("/user/tweets/feed/", auth, async (request, response) => {
 });
 
 //API 4:
-app.get("/user/following/", auth, async (request, response) => {
+app.get("/user/following/", authorization, async (request, response) => {
   try {
     const user = request.user;
     const getFollowingSql = `
@@ -157,7 +157,7 @@ app.get("/user/following/", auth, async (request, response) => {
 });
 
 //API 5:
-app.get("/user/followers/", auth, async (request, response) => {
+app.get("/user/followers/", authorization, async (request, response) => {
   try {
     const user = request.user;
     const getFollowingSql = `
@@ -180,7 +180,7 @@ const checkFollowing = async (request, response, next) => {
     const getTweets = await db.get(`SELECT COUNT(*) as count 
         FROM follower 
         JOIN tweet ON follower.following_user_id = tweet.user_id 
-        WHERE follower.follower_user_id = ${5} AND 
+        WHERE follower.follower_user_id = ${user.user_id} AND 
         tweet.tweet_id = ${tweetId}
             `);
     if (getTweets.count > 0) {
@@ -195,7 +195,7 @@ const checkFollowing = async (request, response, next) => {
 };
 app.get(
   "/tweets/:tweetId/",
-  auth,
+  authorization,
   checkFollowing,
   async (request, response) => {
     try {
@@ -211,8 +211,8 @@ app.get(
             LEFT JOIN like ON like.tweet_id= tweet.tweet_id
             LEFT JOIN reply ON tweet.tweet_id= reply.tweet_id
         WHERE tweet.tweet_id = ${tweetId}`;
-      tweet = await db.all(checkTweetSql);
-      response.send(...tweet);
+      tweet = await db.get(checkTweetSql);
+      response.send(tweet);
     } catch (e) {
       console.log(e.message);
     }
@@ -222,7 +222,7 @@ app.get(
 //API 7
 app.get(
   "/tweets/:tweetId/likes",
-  auth,
+  authorization,
   checkFollowing,
   async (request, response) => {
     try {
@@ -230,7 +230,7 @@ app.get(
       let tweet;
       const { tweetId } = request.params;
       const checkTweetSql = `
-          SELECT distinct(user.username)
+          SELECT distinct(user.username) as username
           FROM  tweet 
           inner JOIN like ON like.tweet_id= tweet.tweet_id
           inner JOIN user ON user.user_id= like.user_id;
@@ -252,7 +252,7 @@ app.get(
 //API 8:
 app.get(
   "/tweets/:tweetId/replies",
-  auth,
+  authorization,
   checkFollowing,
   async (request, response) => {
     try {
@@ -260,7 +260,7 @@ app.get(
       let tweet;
       const { tweetId } = request.params;
       const checkTweetSql = `
-          SELECT u.name as name, r.reply as reply
+          SELECT u.username as name, r.reply as reply
     FROM reply r 
     JOIN tweet t ON r.tweet_id = t.tweet_id 
     JOIN follower f ON t.user_id = f.following_user_id 
@@ -277,16 +277,15 @@ app.get(
 );
 
 //API 9:
-app.get("/user/tweets/", auth, async (request, response) => {
+app.get("/user/tweets/", authorization, async (request, response) => {
   try {
     const user = request.user;
-    const id = parseInt(user.user_id);
     const getTweetSql = `
         SELECT t.tweet as tweet, COUNT(l.like_id) as num_likes, COUNT(r.reply_id) as num_replies, t.date_time
     FROM tweet t
     LEFT JOIN like l ON t.tweet_id = l.tweet_id
     LEFT JOIN reply r ON t.tweet_id = r.tweet_id
-    WHERE t.user_id = ${id}
+    WHERE t.user_id = ${user.user_id}
     GROUP BY t.tweet_id;
         `;
     const tweets = await db.all(getTweetSql);
@@ -297,7 +296,7 @@ app.get("/user/tweets/", auth, async (request, response) => {
 });
 
 //API 10 :
-app.post("/user/tweets/", auth, async (request, response) => {
+app.post("/user/tweets/", authorization, async (request, response) => {
   try {
     const { tweet } = request.body;
     const date = new Date();
@@ -331,14 +330,19 @@ const checkOwner = async (request, response, next) => {
     console.log(e.message);
   }
 };
-app.delete("/tweets/:tweetId/", auth, checkOwner, async (request, response) => {
-  try {
-    const { tweetId } = request.params;
-    await db.run(`DELETE FROM tweet WHERE tweet_id =${tweetId}`);
-    response.send("Tweet Removed");
-  } catch (e) {
-    console.log(e.message);
+app.delete(
+  "/tweets/:tweetId/",
+  authorization,
+  checkOwner,
+  async (request, response) => {
+    try {
+      const { tweetId } = request.params;
+      await db.run(`DELETE FROM tweet WHERE tweet_id =${tweetId}`);
+      response.send("Tweet Removed");
+    } catch (e) {
+      console.log(e.message);
+    }
   }
-});
+);
 
 module.exports = app;
