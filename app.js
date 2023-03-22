@@ -221,7 +221,6 @@ app.get(
   checkFollowing,
   async (request, response) => {
     try {
-      const user = request.user;
       let tweet;
       const { tweetId } = request.params;
       const checkTweetSql = `
