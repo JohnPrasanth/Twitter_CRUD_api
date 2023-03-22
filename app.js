@@ -87,7 +87,6 @@ const checkPassword = async (request, response, next) => {
 };
 app.post("/login/", checkPassword, async (request, response) => {
   try {
-    const { username, password } = request.body;
     const token = jwt.sign(request.user, "Secret Key");
     response.send({
       jwtToken: token,
@@ -237,7 +236,8 @@ app.get(
             INNER JOIN tweet ON follower.following_user_id = tweet.user_id 
           inner JOIN like ON like.tweet_id= tweet.tweet_id
           inner JOIN user ON user.user_id= like.user_id;
-          WHERE tweet.tweet_id = ${tweetId}`;
+          WHERE tweet.tweet_id = ${tweetId}
+            follower.follower_user_id=${user.user_id}`;
       tweet = await db.all(checkTweetSql);
       let result = [];
       tweet.forEach((element) => {
@@ -268,7 +268,7 @@ app.get(
     JOIN tweet t ON r.tweet_id = t.tweet_id 
     JOIN follower f ON t.user_id = f.following_user_id 
     JOIN user u ON r.user_id = u.user_id 
-    WHERE f.follower_user_id = ${tweetId} AND t.tweet_id=${tweetId}`;
+    WHERE f.follower_user_id = ${user.user_id} AND t.tweet_id=${tweetId}`;
       tweet = await db.all(checkTweetSql);
       response.send({
         replies: tweet,
